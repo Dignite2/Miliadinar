@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>USDT Roulette - Jeu de Roulette Cryptographique</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .wheel-container {
+            position: relative;
+            width: 400px;
+            height: 400px;
+            margin: 0 auto;
+        }
+        
+        .wheel {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            border-radius: 50%;
+            overflow: hidden;
+            box-shadow: 0 0 0 10px #1a202c, 0 0 30px rgba(0, 0, 0, 0.8);
+            transition: transform 5s cubic-bezier(0.17, 0.67, 0.12, 0.99);
+            transform: rotate(0deg);
+        }
+        
+        .wheel-center {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            background: #1a202c;
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+            border: 2px solid #2d3748;
+        }
+        
+        .wheel-section {
+            position: absolute;
+            width: 50%;
+            height: 50%;
+            transform-origin: 100% 100%;
+            left: 0;
+            top: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+            border: 1px solid rgba(0,0,0,0.2);
+        }
+        
+        .pointer {
+            position: absolute;
+            top: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 20px solid transparent;
+            border-right: 20px solid transparent;
+            border-top: 40px solid #e53e3e;
+            z-index: 5;
+            filter: drop-shadow(0 0 5px rgba(0,0,0,0.5));
+        }
+        
+        .bet-controls button {
+            transition: all 0.2s ease;
+        }
+        
+        .bet-controls button:hover {
+            transform: translateY(-2px);
+        }
+        
+        .bet-controls button:active {
+            transform: translateY(0);
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        .win-animation {
+            animation: pulse 0.5s infinite;
+        }
+        
+        .history-item {
+            transition: all 0.3s ease;
+        }
+        
+        .history-item:hover {
+            transform: translateX(5px);
+        }
+        
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background-color: #f00;
+            border-radius: 50%;
+            pointer-events: none;
+        }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #2d3748;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #4a5568;
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: #718096;
+        }
+        
+        /* Gradient border for wallet */
+        .wallet-border {
+            border: 2px solid transparent;
+            background-clip: padding-box;
+            position: relative;
+            background: #1a202c;
+        }
+        
+        .wallet-border::after {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(45deg, #4299E1, #9F7AEA);
+            z-index: -1;
+            border-radius: 0.5rem;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen font-sans">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <header class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+            <div class="flex items-center">
+                <i class="fab fa-ethereum text-4xl text-blue-400 mr-3"></i>
+                <div>
+                    <h1 class="text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-600 bg-clip-text text-transparent">USDT Roulette</h1>
+                    <p class="text-gray-400 text-sm">Jeu de roulette cryptographique sécurisé</p>
+                </div>
+            </div>
+            <div class="flex flex-col sm:flex-row items-center space-y-2 sm:space-y-0 sm:space-x-4">
+                <div class="wallet-border px-4 py-2 rounded-lg flex items-center shadow-lg">
+                    <i class="fas fa-wallet text-yellow-400 mr-2"></i>
+                    <span id="balance" class="font-mono text-lg">50,000.00</span>
+                    <span class="text-yellow-400 ml-1">USDT</span>
+                </div>
+                <button id="connectWalletBtn" class="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 px-6 py-2 rounded-lg font-medium transition shadow-lg flex items-center">
+                    <i class="fas fa-plug mr-2"></i>Connecter Wallet
+                </button>
+            </div>
+        </header>
+        
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Left Column - Game Area -->
+            <div class="lg:col-span-2 space-y-8">
+                <!-- Wheel Container -->
+                <div class="flex flex-col items-center">
+                    <div class="wheel-container mb-8">
+                        <div class="pointer"></div>
+                        <div id="wheel" class="wheel">
+                            <!-- Wheel sections will be added by JavaScript -->
+                            <div class="wheel-center">SPIN</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Bet Controls -->
+                    <div class="w-full max-w-md bg-gray-800 rounded-xl p-6 shadow-lg border border-gray-700">
+                        <h3 class="text-xl font-semibold mb-4 text-center text-blue-300">Mise en jeu</h3>
+                        <div class="flex items-center justify-between mb-6 bet-controls">
+                            <button class="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg" onclick="adjustBet(-100)">
+                                <i class="fas fa-minus mr-1"></i>100
+                            </button>
+                            <button class="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg" onclick="adjustBet(-10)">
+                                <i class="fas fa-minus mr-1"></i>10
+                            </button>
+                            <div class="relative flex-1 mx-4">
+                                <input type="number" id="betAmount" value="100" min="1" max="50000" 
+                                       class="w-full bg-gray-700 border-2 border-blue-500 rounded-lg py-3 px-4 text-center font-mono text-xl focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <div class="absolute right-3 top-3 text-gray-400 text-sm">USDT</div>
+                            </div>
+                            <button class="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg" onclick="adjustBet(10)">
+                                <i class="fas fa-plus mr-1"></i>10
+                            </button>
+                            <button class="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg" onclick="adjustBet(100)">
+                                <i class="fas fa-plus mr-1"></i>100
+                            </button>
+                        </div>
+                        <div class="grid grid-cols-4 gap-3">
+                            <button onclick="setBetPercent(0.1)" class="bg-blue-900 hover:bg-blue-800 py-2 rounded-lg transition flex items-center justify-center">
+                                <span>10%</span>
+                            </button>
+                            <button onclick="setBetPercent(0.25)" class="bg-blue-900 hover:bg-blue-800 py-2 rounded-lg transition flex items-center justify-center">
+                                <span>25%</span>
+                            </button>
+                            <button onclick="setBetPercent(0.5)" class="bg-blue-900 hover:bg-blue-800 py-2 rounded-lg transition flex items-center justify-center">
+                                <span>50%</span>
+                            </button>
+                            <button onclick="setBetPercent(1)" class="bg-purple-900 hover:bg-purple-800 py-2 rounded-lg transition flex items-center justify-center font-bold">
+                                <i class="fas fa-allergies mr-1"></i> MAX
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Spin Button -->
+                <div class="flex justify-center mt-6">
+                    <button id="spinBtn" class="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-bold py-5 px-16 rounded-full text-xl shadow-lg transition transform hover:scale-105 flex items-center">
+                        <i class="fas fa-play mr-3"></i> TOURNER LA ROULETTE
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Right Column - Info Panels -->
+            <div class="space-y-8">
+                <!-- Multipliers Info -->
+                <div class="bg-gray-800 rounded-xl p-6 shadow-lg border border-gray-700">
+                    <h3 class="text-xl font-semibold mb-4 flex items-center text-yellow-300">
+                        <i class="fas fa-trophy mr-2"></i> Multiplicateurs
+                    </h3>
+                    <div class="space-y-3">
+                        <div class="flex justify-between items-center bg-gradient-to-r from-red-900 to-red-800 px-4 py-3 rounded-lg">
+                            <span class="font-bold">x2</span>
+                            <span class="text-gray-300">2%</span>
+                        </div>
+                        <div class="flex justify-between items-center bg-gradient-to-r from-orange-900 to-orange-800 px-4 py-3 rounded-lg">
+                            <span class="font-bold">x5</span>
+                            <span class="text-gray-300">2.5%</span>
+                        </div>
+                        <div class="flex justify-between items-center bg-gradient-to-r from-yellow-900 to-yellow-800 px-4 py-3 rounded-lg">
+                            <span class="font-bold">x10</span>
+                            <span class="text-gray-300">3%</span>
+                        </div>
+                        <div class="flex justify-between items-center bg-gradient-to-r from-green-900 to-green-800 px-4 py-3 rounded-lg">
+                            <span class="font-bold">x20</span>
+                            <span class="text-gray-300">4%</span>
+                        </div>
+                        <div class="flex justify-between items-center bg-gradient-to-r from-teal-900 to-teal-800 px-4 py-3 rounded-lg">
+                            <span class="font-bold">x50</span>
+                            <span class="text-gray-300">4.5%</span>
+                        </div>
+                        <div class="flex justify-between items-center bg-gradient-to-r from-blue-900 to-blue-800 px-4 py-3 rounded-lg">
+                            <span class="font-bold">x100</span>
+                            <span class="text-gray-300">5%</span>
+                        </div>
+                        <div class="flex justify-between items-center bg-gradient-to-r from-indigo-900 to-indigo-800 px-4 py-3 rounded-lg">
+                            <span class="font-bold">x250</span>
+                            <span class="text-gray-300">9%</span>
+                        </div>
+                        <div class="flex justify-between items-center bg-gradient-to-r from-purple-900 to-purple-800 px-4 py-3 rounded-lg">
+                            <span class="font-bold">x500</span>
+                            <span class="text-gray-300">10%</span>
+                        </div>
+                        <div class="flex justify-between items-center bg-gradient-to-r from-pink-900 to-pink-800 px-4 py-3 rounded-lg">
+                            <span class="font-bold">x1000</span>
+                            <span class="text-gray-300">35%</span>
+                        </div>
+                        <div class="flex justify-between items-center bg-gradient-to-r from-rose-900 to-rose-800 px-4 py-3 rounded-lg">
+                            <span class="font-bold">x10000</span>
+                            <span class="text-gray-300">25%</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Deposit/Withdraw -->
+                <div class="bg-gray-800 rounded-xl p-6 shadow-lg border border-gray-700">
+                    <h3 class="text-xl font-semibold mb-4 flex items-center text-blue-300">
+                        <i class="fas fa-exchange-alt mr-2"></i> Transactions Binance
+                    </h3>
+                    
+                    <div class="mb-6">
+                        <div class="flex items-center mb-2">
+                            <i class="fas fa-arrow-down text-green-400 mr-2"></i>
+                            <label for="depositAmount" class="font-medium">Dépôt USDT</label>
+                        </div>
+                        <div class="flex">
+                            <input type="number" id="depositAmount" placeholder="Montant USDT" 
+                                   class="flex-1 bg-gray-700 border-2 border-green-500 rounded-l-lg py-2 px-4 focus:outline-none focus:ring-2 focus:ring-green-500">
+                            <button id="depositBtn" class="bg-green-600 hover:bg-green-700 px-6 py-2 rounded-r-lg transition font-bold flex items-center">
+                                <i class="fas fa-check mr-2"></i> Valider
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <div class="flex items-center mb-2">
+                            <i class="fas fa-arrow-up text-red-400 mr-2"></i>
+                            <label for="withdrawAmount" class="font-medium">Retrait USDT</label>
+                        </div>
+                        <div class="flex">
+                            <input type="number" id="withdrawAmount" placeholder="Montant USDT" 
+                                   class="flex-1 bg-gray-700 border-2 border-red-500 rounded-l-lg py-2 px-4 focus:outline-none focus:ring-2 focus:ring-red-500">
+                            <button id="withdrawBtn" class="bg-red-600 hover:bg-red-700 px-6 py-2 rounded-r-lg transition font-bold flex items-center">
+                                <i class="fas fa-check mr-2"></i> Valider
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- History -->
+                <div class="bg-gray-800 rounded-xl p-6 shadow-lg border border-gray-700">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-xl font-semibold flex items-center text-purple-300">
+                            <i class="fas fa-history mr-2"></i> Historique
+                        </h3>
+                        <button onclick="clearHistory()" class="text-gray-400 hover:text-white text-sm">
+                            <i class="fas fa-trash-alt mr-1"></i> Effacer
+                        </button>
+                    </div>
+                    <div id="historyList" class="space-y-2 max-h-60 overflow-y-auto pr-2">
+                        <!-- History items will be added here -->
+                        <div class="text-gray-400 text-center py-4">Aucun historique pour le moment</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Recent Wins -->
+        <div class="mt-12 bg-gray-800 rounded-xl p-6 shadow-lg border border-gray-700">
+            <h3 class="text-xl font-semibold mb-4 flex items-center text-yellow-300">
+                <i class="fas fa-star mr-2"></i> Gains récents
+            </h3>
+            <div id="recentWins" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-10 gap-4">
+                <!-- Recent wins will be added here -->
+                <div class="text-gray-400 text-center py-4">Aucun gain récent</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Game Result Modal -->
+    <div id="resultModal" class="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 hidden">
+        <div class="bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl p-8 max-w-md w-full mx-4 relative border-2 border-blue-500">
+            <button id="closeModalBtn" class="absolute top-4 right-4 text-gray-400 hover:text-white text-2xl">
+                <i class="fas fa-times"></i>
+            </button>
+            <div class="text-center">
+                <div id="resultIcon" class="text-7xl mb-4">
+                    <i class="fas fa-trophy text-yellow-400"></i>
+                </div>
+                <h2 id="resultTitle" class="text-3xl font-bold mb-2 bg-gradient-to-r from-yellow-400 to-yellow-600 bg-clip-text text-transparent">Félicitations !</h2>
+                <p id="resultMessage" class="text-xl mb-6">Vous avez gagné <span class="text-green-400 font-bold">0 USDT</span> !</p>
+                <div class="flex justify-center space-x-4">
+                    <button id="playAgainBtn" class="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 px-8 py-3 rounded-lg font-bold transition flex items-center">
+                        <i class="fas fa-redo mr-2"></i> Rejouer
+                    </button>
+                    <button id="withdrawWinBtn" class="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 px-8 py-3 rounded-lg font-bold transition flex items-center">
+                        <i class="fas fa-wallet mr-2"></i> Retirer
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Binance Withdrawal Modal -->
+    <div id="withdrawModal" class="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 hidden">
+        <div class="bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl p-8 max-w-md w-full mx-4 relative border-2 border-green-500">
+            <button id="closeWithdrawModalBtn" class="absolute top-4 right-4 text-gray-400 hover:text-white text-2xl">
+                <i class="fas fa-times"></i>
+            </button>
+            <div class="text-center">
+                <div class="text-5xl mb-4 text-green-400">
+                    <i class="fas fa-wallet"></i>
+                </div>
+                <h2 class="text-2xl font-bold mb-2">Retrait vers Binance</h2>
+                <div class="mb-6">
+                    <label for="binanceAddress" class="block text-left mb-2">Adresse Binance Pay</label>
+                    <input type="text" id="binanceAddress" placeholder="Votre adresse Binance Pay" 
+                           class="w-full bg-gray-700 border-2 border-green-500 rounded-lg py-3 px-4 focus:outline-none focus:ring-2 focus:ring-green-500 mb-4">
+                    
+                    <label for="withdrawAmountModal" class="block text-left mb-2">Montant USDT</label>
+                    <input type="number" id="withdrawAmountModal" placeholder="Montant à retirer" 
+                           class="w-full bg-gray-700 border-2 border-green-500 rounded-lg py-3 px-4 focus:outline-none focus:ring-2 focus:ring-green-500">
+                </div>
+                <div class="flex justify-center">
+                    <button id="confirmWithdrawBtn" class="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 px-8 py-3 rounded-lg font-bold transition flex items-center">
+                        <i class="fas fa-check-circle mr-2"></i> Confirmer le retrait
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Game configuration
+        const multipliers = [
+            { value: 2, probability: 2, color: 'linear-gradient(135deg, #F56565, #C53030)' },
+            { value: 5, probability: 2.5, color: 'linear-gradient(135deg, #ED8936, #9C4221)' },
+            { value: 10, probability: 3, color: 'linear-gradient(135deg, #ECC94B, #B7791F)' },
+            { value: 20, probability: 4, color: 'linear-gradient(135deg, #48BB78, #276749)' },
+            { value: 50, probability: 4.5, color: 'linear-gradient(135deg, #38B2AC, #285E61)' },
+            { value: 100, probability: 5, color: 'linear-gradient(135deg, #4299E1, #2B6CB0)' },
+            { value: 250, probability: 9, color: 'linear-gradient(135deg, #667EEA, #4C51BF)' },
+            { value: 500, probability: 10, color: 'linear-gradient(135deg, #9F7AEA, #6B46C1)' },
+            { value: 1000, probability: 35, color: 'linear-gradient(135deg, #ED64A6, #B83280)' },
+            { value: 10000, probability: 25, color: 'linear-gradient(135deg, #F687B3, #D53F8C)' }
+        ];
+        
+        // Game state
+        let balance = 50000; // Starting balance
+        let isSpinning = false;
+        let gameHistory = [];
+        let recentWins = [];
+        let lastWinAmount = 0;
+        
+        // DOM elements
+        const wheel = document.getElementById('wheel');
+        const spinBtn = document.getElementById('spinBtn');
+        const balanceDisplay = document.getElementById('balance');
+        const betAmountInput = document.getElementById('betAmount');
+        const historyList = document.getElementById('historyList');
+        const recentWinsContainer = document.getElementById('recentWins');
+        const resultModal = document.getElementById('resultModal');
+        const resultMessage = document.getElementById('resultMessage');
+        const resultTitle = document.getElementById('resultTitle');
+        const resultIcon = document.getElementById('resultIcon');
+        const depositBtn = document.getElementById('depositBtn');
+        const withdrawBtn = document.getElementById('withdrawBtn');
+        const depositAmount = document.getElementById('depositAmount');
+        const withdrawAmount = document.getElementById('withdrawAmount');
+        const connectWalletBtn = document.getElementById('connectWalletBtn');
+        const playAgainBtn = document.getElementById('playAgainBtn');
+        const closeModalBtn = document.getElementById('closeModalBtn');
+        const withdrawModal = document.getElementById('withdrawModal');
+        const closeWithdrawModalBtn = document.getElementById('closeWithdrawModalBtn');
+        const confirmWithdrawBtn = document.getElementById('confirmWithdrawBtn');
+        const withdrawWinBtn = document.getElementById('withdrawWinBtn');
+        const binanceAddress = document.getElementById('binanceAddress');
+        const withdrawAmountModal = document.getElementById('withdrawAmountModal');
+        
+        // Initialize the wheel
+        function initWheel() {
+            let cumulativeAngle = 0;
+            const totalProbability = multipliers.reduce((sum, m) => sum + m.probability, 0);
+            
+            multipliers.forEach((multiplier, index) => {
+                const sectionAngle = (multiplier.probability / totalProbability) * 360;
+                const section = document.createElement('div');
+                section.className = 'wheel-section';
+                section.style.transform = `rotate(${cumulativeAngle}deg) skewY(${90 - sectionAngle}deg)`;
+                section.style.background = multiplier.color;
+                section.innerHTML = `<span style="transform: skewY(${sectionAngle - 90}deg) rotate(${sectionAngle/2}deg) translate(120px)">x${multiplier.value}</span>`;
+                wheel.appendChild(section);
+                cumulativeAngle += sectionAngle;
+            });
+        }
+        
+        // Spin the wheel
+        function spinWheel() {
+            if (isSpinning) return;
+            
+            const betAmount = parseFloat(betAmountInput.value);
+            if (isNaN(betAmount) || betAmount <= 0) {
+                alert('Veuillez entrer un montant valide');
+                return;
+            }
+            
+            if (betAmount > balance) {
+                alert('Solde insuffisant');
+                return;
+            }
+            
+            if (betAmount < 1) {
+                alert('La mise minimale est de 1 USDT');
+                return;
+            }
+            
+            // Deduct bet amount from balance
+            balance -= betAmount;
+            updateBalance();
+            
+            isSpinning = true;
+            spinBtn.disabled = true;
+            spinBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> EN COURS...';
+            
+            // Select a random multiplier based on probabilities
+            const random = Math.random() * 100;
+            let cumulativeProbability = 0;
+            let selectedMultiplier = null;
+            
+            for (const multiplier of multipliers) {
+                cumulativeProbability += multiplier.probability;
+                if (random <= cumulativeProbability) {
+                    selectedMultiplier = multiplier;
+                    break;
+                }
+            }
+            
+            // Calculate the angle for the selected multiplier
+            const totalProbability = multipliers.reduce((sum, m) => sum + m.probability, 0);
+            let targetAngle = 0;
+            let cumulativeAngle = 0;
+            
+            for (const multiplier of multipliers) {
+                const sectionAngle = (multiplier.probability / totalProbability) * 360;
+                if (multiplier === selectedMultiplier) {
+                    targetAngle = cumulativeAngle + (sectionAngle / 2);
+                    break;
+                }
+                cumulativeAngle += sectionAngle;
+            }
+            
+            // Add 5 full rotations (1800 degrees) plus random angle
+            const spinAngle = 1800 + Math.random() * 360;
+            const finalAngle = spinAngle - (targetAngle % 360);
+            
+            wheel.style.transform = `rotate(${-finalAngle}deg)`;
+            
+            // Show result after spin completes
+            setTimeout(() => {
+                const winAmount = betAmount * selectedMultiplier.value;
+                lastWinAmount = winAmount;
+                balance += winAmount;
+                updateBalance();
+                
+                // Add to history
+                addToHistory(betAmount, selectedMultiplier.value, winAmount);
+                
+                // Show result modal
+                showResult(winAmount, selectedMultiplier.value);
+                
+                isSpinning = false;
+                spinBtn.disabled = false;
+                spinBtn.innerHTML = '<i class="fas fa-play mr-3"></i> TOURNER LA ROULETTE';
+                
+                // Add confetti if big win
+                if (selectedMultiplier.value >= 100) {
+                    createConfetti();
+                }
+            }, 5500);
+        }
+        
+        // Create confetti effect
+        function createConfetti() {
+            const colors = ['#f00', '#0f0', '#00f', '#ff0', '#f0f', '#0ff'];
+            
+            for (let i = 0; i < 100; i++) {
+                const confetti = document.createElement('div');
+                confetti.className = 'confetti';
+                confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                confetti.style.left = Math.random() * 100 + 'vw';
+                confetti.style.top = -10 + 'px';
+                confetti.style.transform = `rotate(${Math.random() * 360}deg)`;
+                confetti.style.width = Math.random() * 10 + 5 + 'px';
+                confetti.style.height = Math.random() * 10 + 5 + 'px';
+                confetti.style.opacity = Math.random() + 0.5;
+                
+                document.body.appendChild(confetti);
+                
+                const animationDuration = Math.random() * 3 + 2;
+                
+                confetti.animate([
+                    { top: '-10px', transform: `rotate(${Math.random() * 360}deg)` },
+                    { top: '100vh', transform: `rotate(${Math.random() * 360}deg)` }
+                ], {
+                    duration: animationDuration * 1000,
+                    easing: 'cubic-bezier(0.1, 0.8, 0.9, 1)'
+                });
+                
+                setTimeout(() => {
+                    confetti.remove();
+                }, animationDuration * 1000);
+            }
+        }
+        
+        // Update balance display
+        function updateBalance() {
+            balanceDisplay.textContent = balance.toLocaleString('fr-FR', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+        }
+        
+        // Add game result to history
+        function addToHistory(bet, multiplier, win) {
+            const historyItem = {
+                bet: bet,
+                multiplier: multiplier,
+                win: win,
+                timestamp: new Date()
+            };
+            
+            gameHistory.unshift(historyItem);
+            
+            // Add to recent wins if it's a win
+            if (multiplier > 1) {
+                recentWins.unshift(historyItem);
+                if (recentWins.length > 10) recentWins.pop();
+                updateRecentWins();
+            }
+            
+            updateHistoryList();
+        }
+        
+        // Clear history
+        function clearHistory() {
+            gameHistory = [];
+            recentWins = [];
+            updateHistoryList();
+            updateRecentWins();
+        }
+        
+        // Update history list display
+        function updateHistoryList() {
+            if (gameHistory.length === 0) {
+                historyList.innerHTML = '<div class="text-gray-400 text-center py-4">Aucun historique pour le moment</div>';
+                return;
+            }
+            
+            historyList.innerHTML = '';
+            gameHistory.slice(0, 15).forEach(item => {
+                const historyItem = document.createElement('div');
+                historyItem.className = `history-item flex justify-between items-center p-3 rounded-lg ${item.multiplier > 1 ? 'bg-green-900 bg-opacity-30' : 'bg-gray-700'}`;
+                
+                const timeText = document.createElement('span');
+                timeText.className = 'text-gray-400 text-xs';
+                timeText.textContent = item.timestamp.toLocaleTimeString();
+                
+                const multiplierText = document.createElement('span');
+                multiplierText.className = 'font-bold';
+                multiplierText.textContent = `x${item.multiplier}`;
+                
+                const amountText = document.createElement('span');
+                amountText.className = item.multiplier > 1 ? 'text-green-400 font-mono' : 'text-red-400 font-mono';
+                amountText.textContent = item.multiplier > 1 ? `+${item.win.toFixed(2)}` : `-${item.bet.toFixed(2)}`;
+                
+                historyItem.appendChild(timeText);
+                historyItem.appendChild(multiplierText);
+                historyItem.appendChild(amountText);
+                historyList.appendChild(historyItem);
+            });
+        }
+        
+        // Update recent wins display
+        function updateRecentWins() {
+            if (recentWins.length === 0) {
+                recentWinsContainer.innerHTML = '<div class="text-gray-400 text-center py-4">Aucun gain récent</div>';
+                return;
+            }
+            
+            recentWinsContainer.innerHTML = '';
+            recentWins.forEach(item => {
+                const winItem = document.createElement('div');
+                winItem.className = 'flex flex-col items-center justify-center bg-gradient-to-br from-gray-700 to-gray-800 p-3 rounded-lg border border-gray-600';
+                
+                const multiplierText = document.createElement('span');
+                multiplierText.className = 'text-xl font-bold text-yellow-400';
+                multiplierText.textContent = `x${item.multiplier}`;
+                
+                const amountText = document.createElement('span');
+                amountText.className = 'text-green-400 font-mono text-sm';
+                amountText.textContent = `${item.win.toLocaleString('fr-FR', {minimumFractionDigits: 2, maximumFractionDigits: 2})} USDT`;
+                
+                winItem.appendChild(multiplierText);
+                winItem.appendChild(amountText);
+                recentWinsContainer.appendChild(winItem);
+            });
+        }
+        
+        // Show result modal
+        function showResult(winAmount, multiplier) {
+            if (multiplier > 1) {
+                resultTitle.textContent = 'Félicitations !';
+                resultMessage.innerHTML = `Vous avez gagné <span class="text-green-400 font-bold">${winAmount.toLocaleString('fr-FR', {minimumFractionDigits: 2, maximumFractionDigits: 2})} USDT</span> (x${multiplier}) !`;
+                resultIcon.innerHTML = '<i class="fas fa-trophy text-yellow-400"></i>';
+            } else {
+                resultTitle.textContent = 'Dommage !';
+                resultMessage.innerHTML = `Vous n'avez pas gagné cette fois. Essayez encore !`;
+                resultIcon.innerHTML = '<i class="fas fa-sad-tear text-blue-400"></i>';
+            }
+            
+            resultModal.classList.remove('hidden');
+        }
+        
+        // Adjust bet amount
+        function adjustBet(amount) {
+            const currentBet = parseFloat(betAmountInput.value) || 0;
+            const newBet = Math.max(1, Math.min(50000, currentBet + amount));
+            betAmountInput.value = newBet;
+        }
+        
+        // Set bet to percentage of balance
+        function setBetPercent(percent) {
+            const newBet = Math.max(1, Math.min(50000, Math.floor(balance * percent)));
+            betAmountInput.value = newBet;
+        }
+        
+        // Deposit funds
+        function depositFunds() {
+            const amount = parseFloat(depositAmount.value);
+            if (isNaN(amount) || amount <= 0) {
+                alert('Veuillez entrer un montant valide');
+                return;
+            }
+            
+            if (amount > 100000) {
+                alert('Le dépôt maximum est de 100,000 USDT');
+                return;
+            }
+            
+            // In a real app, this would connect to Binance Pay API
+            balance += amount;
+            updateBalance();
+            depositAmount.value = '';
+            
+            // Show success message
+            alert(`Dépôt de ${amount.toLocaleString('fr-FR', {minimumFractionDigits: 2, maximumFractionDigits: 2})} USDT effectué avec succès !`);
+        }
+        
+        // Withdraw funds
+        function withdrawFunds() {
+            const amount = parseFloat(withdrawAmount.value);
+            if (isNaN(amount) || amount <= 0) {
+                alert('Veuillez entrer un montant valide');
+                return;
+            }
+            
+            if (amount > balance) {
+                alert('Solde insuffisant');
+                return;
+            }
+            
+            if (amount < 10) {
+                alert('Le retrait minimum est de 10 USDT');
+                return;
+            }
+            
+            // Show withdrawal modal
+            withdrawAmountModal.value = amount;
+            withdrawModal.classList.remove('hidden');
+        }
+        
+        // Confirm withdrawal
+        function confirmWithdrawal() {
+            const amount = parseFloat(withdrawAmountModal.value);
+            const address = binanceAddress.value.trim();
+            
+            if (isNaN(amount) || amount <= 0) {
+                alert('Veuillez entrer un montant valide');
+                return;
+            }
+            
+            if (amount > balance) {
+                alert('Solde insuffisant');
+                return;
+            }
+            
+            if (amount < 10) {
+                alert('Le retrait minimum est de 10 USDT');
+                return;
+            }
+            
+            if (!address) {
+                alert('Veuillez entrer une adresse Binance Pay valide');
+                return;
+            }
+            
+            // In a real app, this would connect to Binance Pay API
+            balance -= amount;
+            updateBalance();
+            withdrawAmount.value = '';
+            withdrawAmountModal.value = '';
+            binanceAddress.value = '';
+            withdrawModal.classList.add('hidden');
+            
+            // Show success message
+            alert(`Retrait de ${amount.toLocaleString('fr-FR', {minimumFractionDigits: 2, maximumFractionDigits: 2})} USDT vers l'adresse ${address} en cours de traitement !`);
+        }
+        
+        // Withdraw last win
+        function withdrawLastWin() {
+            if (lastWinAmount <= 0) {
+                alert('Aucun gain à retirer');
+                return;
+            }
+            
+            withdrawAmountModal.value = lastWinAmount;
+            resultModal.classList.add('hidden');
+            withdrawModal.classList.remove('hidden');
+        }
+        
+        // Connect wallet (simulated)
+        function connectWallet() {
+            alert('Connexion au portefeuille cryptographique. Dans une application réelle, cela se connecterait à Binance Pay ou à un portefeuille comme MetaMask.');
+        }
+        
+        // Initialize the game
+        function initGame() {
+            initWheel();
+            updateBalance();
+            updateHistoryList();
+            updateRecentWins();
+            
+            // Event listeners
+            spinBtn.addEventListener('click', spinWheel);
+            depositBtn.addEventListener('click', depositFunds);
+            withdrawBtn.addEventListener('click', withdrawFunds);
+            connectWalletBtn.addEventListener('click', connectWallet);
+            playAgainBtn.addEventListener('click', () => {
+                resultModal.classList.add('hidden');
+            });
+            closeModalBtn.addEventListener('click', () => {
+                resultModal.classList.add('hidden');
+            });
+            withdrawWinBtn.addEventListener('click', withdrawLastWin);
+            confirmWithdrawBtn.addEventListener('click', confirmWithdrawal);
+            closeWithdrawModalBtn.addEventListener('click', () => {
+                withdrawModal.classList.add('hidden');
+            });
+            
+            // Keyboard shortcuts
+            document.addEventListener('keydown', (e) => {
+                if (e.code === 'Space' && !isSpinning) {
+                    spinWheel();
+                }
+            });
+            
+            // Format balance input
+            betAmountInput.addEventListener('blur', () => {
+                const value = parseFloat(betAmountInput.value);
+                if (!isNaN(value)) {
+                    betAmountInput.value = Math.max(1, Math.min(50000, value));
+                }
+            });
+        }
+        
+        // Start the game when the page loads
+        window.addEventListener('DOMContentLoaded', initGame);
+    </script>
+<p style="border-radius: 8px; text-align: center; font-size: 12px; color: #fff; margin-top: 16px;position: fixed; left: 8px; bottom: 8px; z-index: 10; background: rgba(0, 0, 0, 0.8); padding: 4px 8px;">Made with <img src="https://enzostvs-deepsite.hf.space/logo.svg" alt="DeepSite Logo" style="width: 16px; height: 16px; vertical-align: middle;display:inline-block;margin-right:3px;filter:brightness(0) invert(1);"><a href="https://enzostvs-deepsite.hf.space" style="color: #fff;text-decoration: underline;" target="_blank" >DeepSite</a> - 🧬 <a href="https://enzostvs-deepsite.hf.space?remix=Dignite/jeroueusdtdigne" style="color: #fff;text-decoration: underline;" target="_blank" >Remix</a></p></body>
+</html>
